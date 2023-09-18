@@ -1,5 +1,6 @@
 package dev.hilligans.client.graphics;
 
+import dev.hilligans.Settings;
 import dev.hilligans.client.graphics.screens.Screen;
 
 public class Widget {
@@ -61,7 +62,7 @@ public class Widget {
     public void screenClose() {}
 
     public boolean isInBounds(int x, int y) {
-        return x > this.getX() && x < this.getX() + this.width && y > this.getY() && y < this.getY() + this.height;
+        return x > this.getX() && x < this.getX() + this.width * Settings.guiScale && y > this.getY() && y < this.getY() + this.height * Settings.guiScale;
     }
 
     public boolean isInBoundsX(int x) {
@@ -75,11 +76,11 @@ public class Widget {
     public void mouseScroll(int x, int y, float amount) {}
 
     public int getX() {
-        return x;
+        return (int) (x - window.getWindowWidth() / 2);
     }
 
     public int getY() {
-        return y;
+        return (int) (y - window.getWindowHeight() / 2);
     }
 
     public boolean isActive() {

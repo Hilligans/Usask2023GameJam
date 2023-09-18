@@ -1,6 +1,7 @@
 package dev.hilligans.network;
 
 import dev.hilligans.network.Packet.Client.CHandshakePacket;
+import dev.hilligans.network.Packet.Client.CSelectUpgradePacket;
 import dev.hilligans.network.Packet.Client.CShootPacket;
 import dev.hilligans.network.Packet.Client.CUpdatePositionPacket;
 import dev.hilligans.network.Packet.InvalidFormatPacket;
@@ -24,6 +25,12 @@ public class Protocols {
         PROTOCOL.register(CShootPacket::new);
         PROTOCOL.register(SCreateEntity::new);
         PROTOCOL.register(SAwardWinPacket::new);
+        PROTOCOL.register(SSendTimePacket::new);
+        PROTOCOL.register(CSelectUpgradePacket::new);
+        PROTOCOL.register(SGameReadyPacket::new);
+        PROTOCOL.register(SSelectUpgrade::new);
+        PROTOCOL.register(SSpecialEffect::new);
+
     }
 
 

@@ -5,6 +5,7 @@ import dev.hilligans.game.Entity;
 import dev.hilligans.game.Game;
 import dev.hilligans.game.Player;
 import dev.hilligans.network.Packet.Server.SCreateEntity;
+import dev.hilligans.network.Packet.Server.SPlayerInfoPacket;
 import dev.hilligans.network.PacketBase;
 import dev.hilligans.network.PacketData;
 
@@ -42,10 +43,15 @@ public class CShootPacket extends PacketBase {
     @Override
     public void handle() {
         Player player = Main.getServer().game.getPlayer(playerID);
-        Entity entity = player.getProjectile(velX, velZ);
-        if(entity != null) {
-            Main.getServer().game.addEntity(entity);
-            Main.getServer().sendPacket(new SCreateEntity(entity));
+        if(player.shots != 0) {
+            player.shots--;
+            Entity entity = player.getProjectile(velX, velZ);
+            if (entity != null) {
+                Main.getServer().game.addEntity(entity);
+                Main.getServer().sendPacket(new SCreateEntity(entity));
+            }
+            //very race condition
+            Main.getServer().sendPacket(new SPlayerInfoPacket(player));
         }
     }
 }

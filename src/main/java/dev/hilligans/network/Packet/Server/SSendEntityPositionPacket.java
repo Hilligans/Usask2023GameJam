@@ -39,9 +39,11 @@ public class SSendEntityPositionPacket extends PacketBase {
         Game game = Main.getClient().game;
         Int2ObjectOpenHashMap<Entity> entities = game.entities;
         synchronized (entities) {
-        for(int x = 0; x < length; x++) {
-                //System.out.println("yes");
-                entities.get(packetData.readVarInt()).setPos(packetData.readFloat(), packetData.readFloat(), packetData.readFloat());
+            for (int x = 0; x < length; x++) {
+                Entity entity = entities.get(packetData.readVarInt());
+                if (entity != null) {
+                    entity.setPos(packetData.readFloat(), packetData.readFloat(), packetData.readFloat());
+                }
             }
         }
     }

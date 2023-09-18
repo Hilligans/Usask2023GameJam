@@ -32,6 +32,11 @@ public class Wall extends Entity {
     }
 
     @Override
+    boolean isSolid() {
+        return true;
+    }
+
+    @Override
     public void render(GlUtils glUtils, MatrixStack matrixStack) {
         Textures.WALL.drawTexture1(glUtils, matrixStack, (int) x, (int) y, (int) z, size, size);
     }

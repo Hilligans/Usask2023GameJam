@@ -21,6 +21,4 @@ public class Client {
         return "";
     }
 
-
-
 }

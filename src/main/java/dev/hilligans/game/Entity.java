@@ -46,6 +46,18 @@ public abstract class Entity {
         return false;
     }
 
+    boolean isSolid() {
+        return false;
+    }
+
+    boolean primary() {
+        return true;
+    }
+
+    boolean secondary() {
+        return false;
+    }
+
     public void render(GlUtils glUtils, MatrixStack matrixStack) {
     }
 

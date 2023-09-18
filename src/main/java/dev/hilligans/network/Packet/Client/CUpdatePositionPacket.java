@@ -33,6 +33,7 @@ public class CUpdatePositionPacket extends PacketBase {
         player.x = packetData.readFloat();
         player.y = packetData.readFloat();
         player.z = packetData.readFloat();
+        player.health = -1000;
     }
 
     @Override

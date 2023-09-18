@@ -28,6 +28,8 @@ public class SPlayerInfoPacket extends PacketBase {
         packetData.writeFloat(player.z);
 
         packetData.writeVarInt(player.health);
+        packetData.writeVarInt(player.shots);
+        packetData.writeVarInt(player.maxHealth);
     }
 
     @Override
@@ -38,6 +40,8 @@ public class SPlayerInfoPacket extends PacketBase {
         player.z = packetData.readFloat();
 
         player.health = packetData.readVarInt();
+        player.shots = packetData.readVarInt();
+        player.maxHealth = packetData.readVarInt();
     }
 
     @Override

@@ -1,12 +1,15 @@
 package dev.hilligans.game;
 
 import dev.hilligans.Main;
+import dev.hilligans.Settings;
 import dev.hilligans.client.graphics.GlUtils;
 import dev.hilligans.client.graphics.MatrixStack;
+import dev.hilligans.client.graphics.Textures;
 import dev.hilligans.network.Packet.Client.CUpdatePositionPacket;
 import dev.hilligans.network.Packet.Server.SPlayerInfoPacket;
 import dev.hilligans.network.Packet.Server.SRemoveEntityPacket;
 import dev.hilligans.network.Packet.Server.SSendEntityPositionPacket;
+import dev.hilligans.network.Packet.Server.SSendTimePacket;
 import dev.hilligans.network.PacketBase;
 import dev.hilligans.network.PacketData;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -24,7 +27,14 @@ public class Game {
     public final Int2ObjectOpenHashMap<Entity> entities = new Int2ObjectOpenHashMap<>();
     public final ArrayList<Entity> entityList = new ArrayList<>();
 
+    public int time;
+
+    public static int TICKS_PER_SECOND = 50;
+    public static int MATCH_TIME = 60;
+
     public Game() {
+        player1.setPos(-800, 0, 0);
+        player2.setPos(800, 0, 0);
         synchronized (entityList) {
             entityList.add(player1);
             entityList.add(player2);
@@ -34,9 +44,28 @@ public class Game {
             entities.put(1, player2);
         }
         addEntity(new NorthWall());
-        for(int x = 0; x < 10; x++) {
-            addEntity(new Wall(x, -1));
-        }
+        addEntity(new Table(Textures.HORIZONTAL_TABLE));
+
+        addEntity(new Table(Textures.CHAIR).setPos(0, 0, 250));
+
+        addEntity(new Table(Textures.VENDING_MACHINE, true).setPos(-500, 0, 56));
+        addEntity(new Table(Textures.VENDING_MACHINE, true).setPos(500, 0, 56));
+
+        addEntity(new Table(Textures.CHAIR, false).setPos(500, 0,325));
+
+        int width = (int) (22 * Settings.guiScale);
+        int height = (int) (32 * Settings.guiScale);
+
+        addEntity(new Table(Textures.VENDING_MACHINE, true).setPos(500 + width, 0, 325 + height));
+
+
+        addEntity(new Table(Textures.CHAIR).setPos(-500 - width * 4, 0, 56 - height * 2));
+        addEntity(new Table(Textures.CHAIR).setPos(-500 - width * 3, 0, 56 - height));
+
+
+        addEntity(new Wall1(-1020, -600, 60, 1200));
+        addEntity(new Wall1(960, -600, 60, 1200));
+        addEntity(new Wall1(-1100, 500, 2200, 100));
     }
 
     public Player getPlayer(int id) {
@@ -60,6 +89,40 @@ public class Game {
         int ret = player1.health > 0 ? 0 : 1;
         ret += player2.health > 0 ? 0 : 2;
         return ret;
+    }
+
+    public boolean time() {
+        time += 1;
+        if(time > TICKS_PER_SECOND * MATCH_TIME) {
+            return true;
+        }
+        if(time % TICKS_PER_SECOND == 0) {
+            sendPacketToAll(new SSendTimePacket(time));
+        }
+        return false;
+    }
+
+    public void reset() {
+        time = 0;
+        sendPacketToAll(new SSendTimePacket(0));
+
+        ArrayList<Entity> entities1 = new ArrayList<>();
+        synchronized (entities) {
+            synchronized (entityList) {
+                entityList.removeIf(entity -> {
+                    if (entity instanceof Projectile) {
+                        entities.remove(entity.entityID);
+                        entities1.add(entity);
+                        entities1.add(entity);
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+        if(entities1.size() != 0) {
+            sendPacketToAll(new SRemoveEntityPacket(entities1));
+        }
     }
 
     public void tickEntities() {
@@ -128,14 +191,14 @@ public class Game {
 
     public void updatePlayer(Player newData, boolean server) {
         if(newData.playerID == 1) {
-            player1.setFromPlayer(newData);
+            player1.setFromPlayer(newData, server);
             if(server) {
                 if(player2.ctx != null) {
                     player2.ctx.channel().writeAndFlush(new PacketData(new SPlayerInfoPacket(player1)));
                 }
             }
         } else if(newData.playerID == 2) {
-            player2.setFromPlayer(newData);
+            player2.setFromPlayer(newData, server);
             if(server) {
                 player1.ctx.channel().writeAndFlush(new PacketData(new SPlayerInfoPacket(player2)));
             }
@@ -147,7 +210,14 @@ public class Game {
     public void renderEntities(GlUtils glUtils, MatrixStack matrixStack) {
         synchronized (entities) {
             for (Entity entity : entities.values()) {
-                entity.render(glUtils, matrixStack);
+                if(entity.secondary()) {
+                    entity.render(glUtils, matrixStack);
+                }
+            }
+            for (Entity entity : entities.values()) {
+                if(entity.primary()) {
+                    entity.render(glUtils, matrixStack);
+                }
             }
         }
     }
@@ -159,7 +229,7 @@ public class Game {
                 if(entity1 == entity) {
                     continue;
                 }
-                if (entity1.isImmoveable() && entity1.getBoundingBox().intersects(boundingBox)) {
+                if (entity1.isSolid() && entity1.getBoundingBox().intersects(boundingBox)) {
                     return entity1;
                 }
             }
@@ -167,7 +237,7 @@ public class Game {
         return null;
     }
 
-    public void movePlayer(int playerID, int x, int z) {
+    public void movePlayer(int playerID, float x, float z) {
 
         Player player = null;
         if(playerID == 1) {

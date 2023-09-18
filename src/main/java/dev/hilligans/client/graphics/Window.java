@@ -1,7 +1,10 @@
 package dev.hilligans.client.graphics;
 
 import dev.hilligans.Client;
+import dev.hilligans.Main;
+import dev.hilligans.client.graphics.screens.Screen;
 import org.joml.Vector4f;
+import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.opengl.GL30;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -103,6 +106,17 @@ public class Window {
             width = w;
             height = h;
             GL30.glViewport(0,0,w,h);
+        });
+        glfwSetMouseButtonCallback(window, new GLFWMouseButtonCallback() {
+            @Override
+            public void invoke(long window, int button, int action, int mods) {
+                Screen screen = Main.main.renderer.openScreen;
+                if(screen != null) {
+                    if(action == GLFW_PRESS) {
+                        screen.mouseClick((int) mouseX, (int) mouseY, button);
+                    }
+                }
+            }
         });
 
         glfwSetWindowFocusCallback(window, (window, focused) -> windowFocused = focused);

@@ -6,6 +6,7 @@ import dev.hilligans.Settings;
 import dev.hilligans.client.graphics.*;
 import dev.hilligans.client.graphics.camera.WorldCamera;
 import dev.hilligans.game.Game;
+import dev.hilligans.game.Player;
 import dev.hilligans.network.Packet.Client.CShootPacket;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
@@ -23,107 +24,98 @@ public class GameScreen extends Screen {
 
     WorldCamera worldCamera = new WorldCamera();
 
-    boolean switch1 = false;
-
-    boolean switch2 = false;
+    public boolean started = false;
 
     public static int gameHeight = 12;
     public static int gameWidth = 30;
 
-    public GameScreen() {
-        game.player1.x = 2 * 64;
-        game.player1.z = 2 * 64;
+    int countdown = 60 * 3;
 
+    public GameScreen() {
         client = Main.getClient();
 
-
-        switch1 = true;
         worldCamera.addRotation((float) (-Math.PI/2f), (float) Math.PI/2);
 
         worldCamera.setPosition(0, 1, 0);
     }
 
+    public int renderCount = 0;
+    public long time = System.currentTimeMillis();
+
+    public int dashTime = 0;
+
+    public int projectileCooldown = 0;
+
     @Override
     public void render(GlUtils glUtils, MatrixStack matrixStack) {
-        float moveAmount = 1f;
-        float rotSpeed = 0.01f;
-        int playerMoveSpeed1 = 3;
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
-            worldCamera.addRotation(rotSpeed, 0);
+        long t = System.currentTimeMillis();
+        if(t > time + 1000) {
+            time = t;
+            renderCount = 0;
+        }
+        if(projectileCooldown > 0) {
+            projectileCooldown--;
+        }
+        renderCount++;
+        Player player = game.getPlayer(client.playerID);
+        float playerMoveSpeed1 = 3 * player.temporarySpeedModifier * player.speed;
+
+        if(dashTime > 0) {
+            dashTime--;
         }
 
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
-            worldCamera.addRotation(-rotSpeed, 0);
+        if(Math.abs(player.temporarySpeedModifier - 1) < 0.01) {
+            player.temporarySpeedModifier = 1;
+        } else if(player.temporarySpeedModifier < 1) {
+            player.temporarySpeedModifier *= 1.05;
+        } else if(player.temporarySpeedModifier > 1) {
+            player.temporarySpeedModifier *= 0.95;
         }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
-            if(switch2) {
+
+        if(started) {
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
                 game.movePlayer(client.playerID, 0, -playerMoveSpeed1);
-            } else {
-                worldCamera.moveForward(moveAmount);
             }
-        }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
-            if(switch2) {
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) {
                 game.movePlayer(client.playerID, 0, playerMoveSpeed1);
-            } else {
-                worldCamera.moveBackward(moveAmount);
             }
-        }
-
-
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
-            if(switch2) {
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) {
                 game.movePlayer(client.playerID, playerMoveSpeed1, 0);
-            } else {
-                worldCamera.moveRight(moveAmount);
             }
-        }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
-            if(switch2) {
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) {
                 game.movePlayer(client.playerID, -playerMoveSpeed1, 0);
-            } else {
-                worldCamera.moveLeft(moveAmount);
+            }
+
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) {
+                if(dashTime == 0) {
+                    player.temporarySpeedModifier += 3;
+                    dashTime = 90;
+                }
+            }
+            if (GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
+                if(player.shots != 0) {
+                    if (projectileCooldown == 0) {
+                        Vector2f vector2f = client.game.getPlayer(client.playerID).calculateShootAngle((float) window.mouseX, (float) window.mouseY);
+                        projectileCooldown = 10;
+                        player.shots--;
+                        Main.getClient().network.sendPacket(new CShootPacket(client.game.getPlayer(client.playerID), vector2f.x, vector2f.y));
+                    }
+                }
             }
         }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
-            worldCamera.addRotation(0, -rotSpeed);
-        }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
-            worldCamera.addRotation(0, rotSpeed);
-        }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_Q) == GLFW.GLFW_PRESS) {
-            switch1 = true;
-        }
 
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_Z) == GLFW.GLFW_PRESS) {
-            switch2 = true;
-        }
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_X) == GLFW.GLFW_PRESS) {
-            switch2 = false;
-        }
-
-        if(GLFW.glfwGetKey(window.window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
-            Vector2f vector2f = client.game.getPlayer(client.playerID).calculateShootAngle((float) window.mouseX, (float) window.mouseY);
-
-            Main.getClient().network.sendPacket(new CShootPacket(client.game.getPlayer(client.playerID), vector2f.x, vector2f.y));
-        }
-
-        if(mesh == 0) {
+        if (mesh == 0) {
             makeMesh(glUtils);
             worldCamera.window = Main.main.window;
         }
-        if(!switch1) {
-            matrixStack = worldCamera.getMatrix();
-        } else {
-            matrixStack = worldCamera.get();
-        }
 
+        matrixStack = worldCamera.get();
 
 
         matrixStack.push();
         //matrixStack.matrix4f.lookAt(new Vector3f(x, y, z), new Vector3f(1, 0, 1), new Vector3f(0, 1, 0));
-       // matrixStack.matrix4f.translate(0, 10, 0).rotateX(-rot).rotateZ(-rotz).translate(0, 0, z);
-       // rot -= 0.02f;
+        // matrixStack.matrix4f.translate(0, 10, 0).rotateX(-rot).rotateZ(-rotz).translate(0, 0, z);
+        // rot -= 0.02f;
 
         glUtils.bindPipeline(shaderSource.program);
         glUtils.bindTexture(Textures.TILE.textureId);
@@ -132,6 +124,32 @@ public class GameScreen extends Screen {
         matrixStack.pop();
 
         game.renderEntities(glUtils, matrixStack);
+
+        int time = Game.MATCH_TIME - game.time / Game.TICKS_PER_SECOND;
+        Texture texture = Textures.NUMBERS[time % 10];
+        int height = getHeightOffset();
+        height -= 43 * Settings.guiScale;
+        texture.drawTexture1(glUtils, matrixStack, 16, 0, height, (int) (texture.width * Settings.guiScale * 2), (int) (texture.height * Settings.guiScale * 2));
+
+        time /= 10;
+        texture = Textures.NUMBERS[time % 10];
+        texture.drawTexture1(glUtils, matrixStack, -64 - 16, 0, height, (int) (texture.width * Settings.guiScale * 2), (int) (texture.height * Settings.guiScale * 2));
+
+        if(!started) {
+            countdown--;
+            if(countdown >= 0) {
+                texture = Textures.NUMBERS[((countdown / 60) % 10) + 1];
+            } else {
+                texture = Textures.NUMBERS[0];
+            }
+            height = 0;
+            texture.drawTexture1(glUtils, matrixStack, -32, 0, height, (int) (texture.width * Settings.guiScale * 2), (int) (texture.height * Settings.guiScale * 2));
+        }
+
+    }
+
+    public int getHeightOffset() {
+        return (int) -(gameHeight * Settings.guiScale * 16 - window.height/2);
     }
 
     public void makeMesh(GlUtils glUtils) {

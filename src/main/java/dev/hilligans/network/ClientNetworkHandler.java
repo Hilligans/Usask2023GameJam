@@ -1,5 +1,6 @@
 package dev.hilligans.network;
 
+import dev.hilligans.Main;
 import dev.hilligans.network.Packet.Client.CHandshakePacket;
 import io.netty.channel.*;
 
@@ -31,6 +32,7 @@ public class ClientNetworkHandler extends NetworkHandler {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, PacketData msg) throws Exception {
+        Main.connect = false;
         PacketBase packetBase = msg.createPacket(network.receiveProtocol);
         packetBase.handle();
     }

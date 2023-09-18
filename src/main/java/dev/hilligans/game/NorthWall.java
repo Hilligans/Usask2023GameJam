@@ -38,4 +38,9 @@ public class NorthWall extends Entity {
     boolean isImmoveable() {
         return true;
     }
+
+    @Override
+    boolean isSolid() {
+        return true;
+    }
 }

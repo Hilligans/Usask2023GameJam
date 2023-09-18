@@ -3,9 +3,7 @@ package dev.hilligans;
 import dev.hilligans.client.graphics.GlUtils;
 import dev.hilligans.client.graphics.Renderer;
 import dev.hilligans.client.graphics.Window;
-import dev.hilligans.client.graphics.screens.GameScreen;
 import dev.hilligans.client.graphics.screens.UpgradeSelectScreen;
-import dev.hilligans.client.graphics.screens.WaitingScreen;
 import dev.hilligans.network.*;
 import dev.hilligans.util.ArgumentContainer;
 import org.lwjgl.opengl.GL;
@@ -44,6 +42,9 @@ public class Main {
     public Main() {
         client = new Client(gameInstance);
         server = new Server(gameInstance);
+
+        gameInstance.registerContent();
+        gameInstance.load();
     }
 
     public void run() {
@@ -61,7 +62,7 @@ public class Main {
             @Override
             public void invoke(int source, int type, int id, int severity, int length, long message, long userParam) {
                 if(severity == GL43.GL_DEBUG_SEVERITY_NOTIFICATION) {
-                    System.out.println(MemoryUtil.memUTF8(message));
+                    //System.out.println(MemoryUtil.memUTF8(message));
                 } else {
                     System.err.println(MemoryUtil.memUTF8(message));
                 }
@@ -80,11 +81,11 @@ public class Main {
 
         glUtils = new GlUtils(gameInstance);
         renderer = new Renderer(glUtils, window);
-        renderer.openScreen = new WaitingScreen();
 
-        gameInstance.registerContent();
-        gameInstance.load();
         gameInstance.loadGraphics(glUtils);
+
+        renderer.openScreen = new UpgradeSelectScreen();
+
         glUtils.setupStringRenderer();
 
         renderer.renderLoop();
@@ -93,6 +94,13 @@ public class Main {
 
     public static void main(String[] args) {
         argumentContainer = new ArgumentContainer(args);
+        String ip = argumentContainer.getString("-ip", null);
+        if(ip == null) {
+            System.err.println("You must specify an ip to join");
+            return;
+        }
+        String port = argumentContainer.getString("-port", "9995");
+
         Protocols.setupProtocol();
         main = new Main();
 
@@ -106,29 +114,35 @@ public class Main {
                         ServerNetwork serverNetwork = new ServerNetwork(Protocols.PROTOCOL);
                         main.server.serverNetwork = serverNetwork;
                         System.out.println("Starting Server");
-                        serverNetwork.startServer("9995");
+                        serverNetwork.startServer(port);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }
             };
             thread.start();
+            try {
+                Thread.sleep(2000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
-        if(argumentContainer.getBoolean("-client", false)) {
+        if(argumentContainer.getBoolean("-client", true)) {
             main.client.network = new ClientNetwork(Protocols.PROTOCOL);
             Thread thread1 = new Thread(() -> {
                 try {
-                    Thread.sleep(1700);
-                    main.client.network.joinServer("localhost", "9995", main.client);
+                    main.client.network.joinServer(ip, port, main.client);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             });
             thread1.start();
+            main.run();
         }
-        main.run();
     }
+
+    public static boolean connect = true;
 
     public static Client getClient() {
         return main.client;
